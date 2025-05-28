@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IFSO - AI Network Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>AI Network Assistant</h1>
+        <nav class="navbar">
+            <a href="/">Dashboard</a>
+            <a href="/live_traffic">Live Traffic</a>
+            <a href="/alerts_page">Alerts</a>
+            <a href="/ai_search" class="active">AI Search</a>
+        </nav>
+
+        <div class="ai-search-section">
+            <h2>Ask Your Network Security Questions</h2>
+            <div class="search-input-area">
+                <textarea id="ai-prompt-input" placeholder="e.g., Show me all HTTP traffic from internal IPs.&#10;Are there any new high-severity alerts?&#10;What is the payload of the last command injection?" rows="5"></textarea>
+                <button id="ai-search-btn">Ask AI</button>
+            </div>
+            <div id="ai-response-output" class="log-output">
+                Your AI assistant's response will appear here.
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('ai-search-btn').addEventListener('click', () => {
+            const prompt = document.getElementById('ai-prompt-input').value;
+            const responseDiv = document.getElementById('ai-response-output');
+            responseDiv.innerHTML = 'Thinking...'; // Show loading message
+
+            fetch('/ai_search', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ prompt: prompt })
+            })
+            .then(response => response.json())
+            .then(data => {
+                responseDiv.innerHTML = data.response; // Display the AI's response
+            })
+            .catch(error => {
+                console.error('Error with AI search:', error);
+                responseDiv.innerHTML = 'An error occurred while connecting to the AI. Check console for details.';
+            });
+        });
+    </script>
+</body>
+</html>
