@@ -1,14 +1,11 @@
--- schema.sql
-
--- Existing tables
 CREATE TABLE IF NOT EXISTS packets (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp TEXT NOT NULL,
     source_ip TEXT,
     destination_ip TEXT,
     protocol TEXT,
-    source_port INTEGER,
-    destination_port INTEGER,
+    source_port TEXT,
+    destination_port TEXT,
     packet_length INTEGER,
     info TEXT
 );
@@ -17,16 +14,22 @@ CREATE TABLE IF NOT EXISTS alerts (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     timestamp TEXT NOT NULL,
     alert_message TEXT NOT NULL,
-    packet_info TEXT -- Store relevant packet data as JSON or string
+    source_ip TEXT,
+    destination_ip TEXT,
+    protocol TEXT,
+    source_port TEXT,
+    destination_port TEXT,
+    packet_length INTEGER,
+    attack_type TEXT,
+    severity TEXT,
+    geo TEXT,
+    suggestion TEXT,
+    full_packet_info TEXT
 );
 
--- New table for user-defined rules
+-- RE-INTRODUCED user_rules table
 CREATE TABLE IF NOT EXISTS user_rules (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    rule_name TEXT NOT NULL UNIQUE,
-    rule_type TEXT NOT NULL, -- 'block' or 'alert'
-    target_protocol TEXT,    -- e.g., 'tcp', 'udp', 'all'
-    target_ip TEXT,          -- e.g., '192.168.1.1', 'any'
-    target_port INTEGER,     -- e.g., 80, 443, 'any'
-    direction TEXT           -- 'inbound', 'outbound', 'both' (for 'block' rules)
+    rule_content TEXT NOT NULL UNIQUE, -- Store the rule (e.g., "facebook.com", "1.2.3.4", "malicious_keyword")
+    created_at TEXT NOT NULL
 );

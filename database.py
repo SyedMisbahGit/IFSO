@@ -1,23 +1,16 @@
-# database.py
 import sqlite3
 import os
-from datetime import datetime # ADDED: Import datetime here
+from datetime import datetime
+import json
 
-# IMPORTANT: Ensure this matches the DATABASE path in main.py
 DATABASE = 'ids.db'
 
 def get_db_connection():
     conn = sqlite3.connect(DATABASE)
-    conn.row_factory = sqlite3.Row # This allows accessing columns by name
+    conn.row_factory = sqlite3.Row
     return conn
 
-# init_app is kept for consistency but doesn't do much in this direct-access model
 def init_app(app):
-    """
-    Placeholder for Flask app initialization if database connection
-    were managed via Flask's app context (e.g., g.db).
-    For direct function calls opening/closing connections, it's not strictly needed.
-    """
     pass
 
 def init_db():
@@ -28,7 +21,6 @@ def init_db():
     conn.close()
     print("Database initialized/updated based on schema.sql.")
 
-# RENAMED from insert_packet to add_packet_to_db
 def add_packet_to_db(packet_info):
     conn = get_db_connection()
     conn.execute(
@@ -40,52 +32,52 @@ def add_packet_to_db(packet_info):
     conn.commit()
     conn.close()
 
-# RENAMED from insert_alert to add_alert_to_db
-def add_alert_to_db(alert_message, packet_info_json):
+def add_alert_to_db(alert_message, packet_data):
     conn = get_db_connection()
     conn.execute(
-        "INSERT INTO alerts (timestamp, alert_message, packet_info) VALUES (?, ?, ?)",
-        (datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3], alert_message, packet_info_json)
+        "INSERT INTO alerts (timestamp, alert_message, source_ip, destination_ip, protocol, source_port, destination_port, packet_length, attack_type, severity, geo, suggestion, full_packet_info) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3],
+         alert_message,
+         packet_data.get('src_ip'),
+         packet_data.get('dst_ip'),
+         packet_data.get('proto'),
+         packet_data.get('src_port'),
+         packet_data.get('dst_port'),
+         packet_data.get('packet_length'),
+         packet_data.get('attack_type'),
+         packet_data.get('severity'),
+         packet_data.get('geo'),
+         packet_data.get('suggestion'),
+         json.dumps(packet_data))
     )
     conn.commit()
     conn.close()
 
-# ADDED or CORRECTED get_packets
-def get_packets(limit=100):
+def get_packets(limit=500):
     conn = get_db_connection()
-    # Order by timestamp descending to get most recent packets first
     packets = conn.execute("SELECT * FROM packets ORDER BY timestamp DESC LIMIT ?", (limit,)).fetchall()
     conn.close()
-    # Convert sqlite3.Row objects to dictionaries for easier JSON serialization in Flask
     return [dict(row) for row in packets]
 
-# ADDED or CORRECTED get_alerts
-def get_alerts(limit=100):
+def get_alerts(limit=200):
     conn = get_db_connection()
-    # Order by timestamp descending to get most recent alerts first
     alerts = conn.execute("SELECT * FROM alerts ORDER BY timestamp DESC LIMIT ?", (limit,)).fetchall()
     conn.close()
-    # Convert sqlite3.Row objects to dictionaries
     return [dict(row) for row in alerts]
 
-def add_user_rule(rule_name, rule_type, target_protocol, target_ip, target_port, direction):
+# RE-INTRODUCED USER RULE FUNCTIONS
+def add_user_rule(rule_content):
     conn = get_db_connection()
-    try:
-        conn.execute(
-            "INSERT INTO user_rules (rule_name, rule_type, target_protocol, target_ip, target_port, direction) VALUES (?, ?, ?, ?, ?, ?)",
-            (rule_name, rule_type, target_protocol, target_ip, target_port, direction)
-        )
-        conn.commit()
-        return True
-    except sqlite3.IntegrityError:
-        print(f"Rule with name '{rule_name}' already exists.")
-        return False
-    finally:
-        conn.close()
+    cursor = conn.execute("INSERT INTO user_rules (rule_content, created_at) VALUES (?, ?)",
+                   (rule_content, datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]))
+    conn.commit()
+    rule_id = cursor.lastrowid
+    conn.close()
+    return rule_id
 
 def get_user_rules():
     conn = get_db_connection()
-    rules = conn.execute("SELECT * FROM user_rules").fetchall()
+    rules = conn.execute("SELECT id, rule_content FROM user_rules ORDER BY created_at DESC").fetchall()
     conn.close()
     return [dict(row) for row in rules]
 
